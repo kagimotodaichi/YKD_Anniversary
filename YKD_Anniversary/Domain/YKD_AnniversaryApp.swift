@@ -11,7 +11,7 @@ import SwiftUI
 struct YKD_AnniversaryApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MainView()
         }
     }
 }
