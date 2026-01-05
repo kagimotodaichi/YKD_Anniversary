@@ -5,17 +5,26 @@
 //  Created by 鍵本大地 on 2026/01/03.
 //
 //  ホーム画面
-//  設定で選択した設定日からのカウントダウンが表示
-//  記念日・イベントがリストで表示
+//  ・ステータスメッセージ表示
+//  ・記念日から現在までの経過時間をリアルタイム表示
+//
 
 import SwiftUI
 
 struct HomeView: View {
+
+    let user: User   // ユーザー情報
+
+    // 現在時刻(1秒ごとに更新)
+    @State private var now: Date = Date()
+
     var body: some View {
-        //ホーム画面VStack
-        VStack{
-            //ヘッダー
-            HStack{
+
+        VStack {
+
+            // MARK: ヘッダー
+            HStack {
+
                 // 背景変更ボタン
                 QuarterCircleButton(
                     position: .rightBottom,
@@ -26,15 +35,14 @@ struct HomeView: View {
                     iconSizeRatio: 0.4,
                     iconOffsetRatio: -1
                 ) {
-                    // 背景変更
                     print("背景変更")
                 }
                 .ignoresSafeArea()
                 .opacity(0.5)
-                
+
                 Spacer()
-                
-                //記念日・イベント追加ボタン
+
+                // 記念日・イベント追加ボタン
                 QuarterCircleButton(
                     position: .leftBottom,
                     size: 70,
@@ -44,25 +52,54 @@ struct HomeView: View {
                     iconSizeRatio: 0.45,
                     iconOffsetRatio: -1
                 ) {
-                    // 記念日・イベント追加処理
                     print("記念日・イベント追加")
                 }
                 .ignoresSafeArea()
                 .opacity(0.5)
-                
-            }//ヘッダーHStackここまで
+            }
 
-            Text("２人が出会ってから")
-            Text("記念日から今までの時間")
-            Text("全て・記念日・イベント選択")
-            Text("リスト")
-            Spacer()
+            Spacer().frame(height: 24)
+
+            // ステータスメッセージ
+            Text("2人が" + (user.statusMessage ?? "出会ってから"))
+                .font(.headline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.leading, 46)
             
-        }//ホーム画面VStackここまで
-    }//Bodyここまで
-}//HomeViewここまで
+            // MARK: 経過時間
+            Text(
+                ElapsedTimeFormatter.format(
+                    from: user.startDate,
+                    to: now
+                )
+            )
+            .font(.title2)
+            .fontWeight(.semibold)
+            .monospacedDigit()
+            .padding(.top, 4)
 
-//プレビュー用
+            Spacer().frame(height: 32)
+
+            // MARK: TODO: フィルタ & リスト（仮)
+            Text("全て・記念日・イベント選択")
+                .font(.footnote)
+                .foregroundColor(.secondary)
+
+            Text("リスト")
+                .foregroundColor(.secondary)
+
+            Spacer()
+        }
+        // MARK: 1秒ごとに現在時刻更新
+        .onReceive(
+            Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+        ) { _ in
+            now = Date()
+        }
+    }
+}
+
+// プレビュー用
 #Preview {
     MainView()
 }
