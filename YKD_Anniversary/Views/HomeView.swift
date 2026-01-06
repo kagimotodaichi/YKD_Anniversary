@@ -14,6 +14,10 @@ import SwiftUI
 struct HomeView: View {
 
     let user: User   // ユーザー情報
+    @State private var partnerUser: User?   //相手側ユーザー情報
+    @State private var tempPartnerImage: UIImage?
+    @State private var showPartnerImagePicker = false
+
 
     // 現在時刻(1秒ごとに更新)
     @State private var now: Date = Date()
@@ -66,6 +70,33 @@ struct HomeView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.leading, 46)
             
+            HStack(spacing: 24) {
+                Spacer()
+                // 自分
+                AvatarView(
+                    image: user.iconImage,
+                    size: 100,
+                    isEditable: false,
+                    onTap: nil
+                )
+
+                Text("♡")
+                    .font(.title)
+
+                // 相手
+                AvatarView(
+                    image: partnerUser?.iconImage ?? tempPartnerImage,
+                    size:100,
+                    isEditable: partnerUser == nil,
+                    onTap: {
+                        guard partnerUser == nil else { return }
+                        showPartnerImagePicker = true
+                    }
+                )
+                Spacer()
+            }
+            .padding(.leading, 16)
+            
             // MARK: 経過時間
             Text(
                 ElapsedTimeFormatter.format(
@@ -73,7 +104,7 @@ struct HomeView: View {
                     to: now
                 )
             )
-            .font(.title2)
+            .font(.title)
             .fontWeight(.semibold)
             .monospacedDigit()
             .padding(.top, 4)
@@ -96,6 +127,23 @@ struct HomeView: View {
         ) { _ in
             now = Date()
         }
+        //カップル未連携の場合に相手側を画像選択させる為
+        .photosPicker(
+            isPresented: $showPartnerImagePicker,
+            selection: Binding(
+                get: { nil },
+                set: { item in
+                    guard let item else { return }
+                    Task {
+                        if let data = try? await item.loadTransferable(type: Data.self),
+                           let image = UIImage(data: data) {
+                            tempPartnerImage = image
+                        }
+                    }
+                }
+            ),
+            matching: .images
+        )
     }
 }
 

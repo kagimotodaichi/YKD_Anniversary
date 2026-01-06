@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UIKit
 
 struct User: Identifiable, Equatable, Codable {
     
@@ -36,5 +37,11 @@ struct User: Identifiable, Equatable, Codable {
         self.statusMessage = statusMessage
         self.emotionTags = emotionTags
         self.updatedAt = updatedAt
+    }
+    
+}
+extension User {
+    var iconImage: UIImage? {
+        ImageService.loadImage(from: iconUrl)
     }
 }

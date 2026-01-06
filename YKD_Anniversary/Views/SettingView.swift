@@ -22,7 +22,7 @@ struct SettingView: View {
     @State private var emotionTags: Set<EmotionTag>
     @State private var startDate: Date
 
-    // プロフィール画像(未保存)
+    // プロフィール画像（未保存）
     @State private var selectedImage: UIImage?
     @State private var selectedPhotoItem: PhotosPickerItem?
 
@@ -61,16 +61,21 @@ struct SettingView: View {
         selectedImage != nil
     }
 
+    // MARK: - 表示用プロフィール画像
+    private var displayImage: UIImage? {
+        selectedImage ?? ImageService.loadImage(from: originalUser.iconUrl)
+    }
+
     var body: some View {
         Form {
 
-            //MARK: ユーザー情報
+            // MARK: ユーザー情報
             Section(header: Text("ユーザー情報")) {
 
                 HStack {
                     Spacer()
                     ZStack {
-                        if let image = selectedImage {
+                        if let image = displayImage {
                             Image(uiImage: image)
                                 .resizable()
                                 .scaledToFill()
@@ -96,13 +101,13 @@ struct SettingView: View {
                     Text("プロフィール画像を選択")
                 }
 
-                //表示名
+                // 表示名
                 TextField("表示名", text: $displayName)
                     .onChange(of: displayName) {
                         onDirtyChange(hasChanges)
                     }
 
-                //２人がの後のメッセージ
+                // ステータスメッセージ
                 TextField("出会ってから", text: $statusMessage)
                     .onChange(of: statusMessage) {
                         onDirtyChange(hasChanges)
@@ -187,15 +192,22 @@ struct SettingView: View {
         }
     }
 
-    // MARK: 保存処理
+    // MARK: - 保存処理
     private func save() {
         guard hasChanges else { return }
+
+        var iconUrl = originalUser.iconUrl
+
+        // 新しく画像が選ばれていたら保存
+        if let image = selectedImage {
+            iconUrl = ImageService.save(image: image)
+        }
 
         let updatedUser = User(
             id: originalUser.id,
             coupleId: originalUser.coupleId,
             displayName: displayName,
-            iconUrl: originalUser.iconUrl,
+            iconUrl: iconUrl,
             startDate: startDate,
             statusMessage: statusMessage.isEmpty ? nil : statusMessage,
             emotionTags: emotionTags,
