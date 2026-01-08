@@ -1,3 +1,10 @@
+//
+//  HomeView.swift
+//  YKD_Anniversary
+//
+//  Created by 鍵本大地 on 2026/01/03.
+//
+
 import SwiftUI
 import PhotosUI
 
