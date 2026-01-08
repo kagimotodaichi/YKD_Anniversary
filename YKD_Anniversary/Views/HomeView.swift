@@ -10,17 +10,38 @@
 //
 
 import SwiftUI
+import PhotosUI
 
 struct HomeView: View {
 
-    let user: User   // ユーザー情報
-    @State private var partnerUser: User?   //相手側ユーザー情報
+    let user: User                          // 自分
+    @State private var partnerUser: User?   // 連携済みの相手
     @State private var tempPartnerImage: UIImage?
     @State private var showPartnerImagePicker = false
 
-
-    // 現在時刻(1秒ごとに更新)
+    // 現在時刻（1秒更新）
     @State private var now: Date = Date()
+
+    // MARK: - 相手アバター表示用画像
+    private var displayPartnerImage: UIImage? {
+
+        // 連携済み → 相手ユーザーの画像
+        if let partnerUser {
+            return partnerUser.iconImage
+        }
+
+        // 未連携 → 自分が設定した相手用画像
+        if let savedPartnerImage = user.partnerIconImage {
+            return savedPartnerImage
+        }
+
+        // 未保存 → 一時選択画像
+        if let tempPartnerImage {
+            return tempPartnerImage
+        }
+
+        return nil
+    }
 
     var body: some View {
 
@@ -29,7 +50,6 @@ struct HomeView: View {
             // MARK: ヘッダー
             HStack {
 
-                // 背景変更ボタン
                 QuarterCircleButton(
                     position: .rightBottom,
                     size: 70,
@@ -46,7 +66,6 @@ struct HomeView: View {
 
                 Spacer()
 
-                // 記念日・イベント追加ボタン
                 QuarterCircleButton(
                     position: .leftBottom,
                     size: 70,
@@ -64,14 +83,16 @@ struct HomeView: View {
 
             Spacer().frame(height: 24)
 
-            // ステータスメッセージ
+            // MARK: ステータスメッセージ
             Text("2人が" + (user.statusMessage ?? "出会ってから"))
                 .font(.headline)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.leading, 46)
-            
+
+            // MARK: アバター
             HStack(spacing: 24) {
                 Spacer()
+
                 // 自分
                 AvatarView(
                     image: user.iconImage,
@@ -85,18 +106,22 @@ struct HomeView: View {
 
                 // 相手
                 AvatarView(
-                    image: partnerUser?.iconImage ?? tempPartnerImage,
-                    size:100,
-                    isEditable: partnerUser == nil,
+                    image: displayPartnerImage,
+                    size: 100,
+                    isEditable: partnerUser == nil && user.partnerIconImage == nil,
                     onTap: {
-                        guard partnerUser == nil else { return }
+                        guard partnerUser == nil,
+                              user.partnerIconImage == nil
+                        else { return }
+
                         showPartnerImagePicker = true
                     }
                 )
+
                 Spacer()
             }
             .padding(.leading, 16)
-            
+
             // MARK: 経過時間
             Text(
                 ElapsedTimeFormatter.format(
@@ -111,7 +136,7 @@ struct HomeView: View {
 
             Spacer().frame(height: 32)
 
-            // MARK: TODO: フィルタ & リスト（仮)
+            // 仮コンテンツ
             Text("全て・記念日・イベント選択")
                 .font(.footnote)
                 .foregroundColor(.secondary)
@@ -121,13 +146,15 @@ struct HomeView: View {
 
             Spacer()
         }
-        // MARK: 1秒ごとに現在時刻更新
+
+        // MARK: 現在時刻更新
         .onReceive(
             Timer.publish(every: 1, on: .main, in: .common).autoconnect()
         ) { _ in
             now = Date()
         }
-        //カップル未連携の場合に相手側を画像選択させる為
+
+        // MARK: 未連携時の相手画像選択
         .photosPicker(
             isPresented: $showPartnerImagePicker,
             selection: Binding(
@@ -147,7 +174,7 @@ struct HomeView: View {
     }
 }
 
-// プレビュー用
+// プレビュー
 #Preview {
     MainView()
 }

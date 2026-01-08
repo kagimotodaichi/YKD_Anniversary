@@ -1,20 +1,14 @@
-//
-//  SettingView.swift
-//  YKD_Anniversary
-//
-//  設定画面
-//  ・編集UIのみ
-//  ・未保存(dirty)通知
-//  ・保存要求通知
-//
-
 import SwiftUI
 import PhotosUI
 
 struct SettingView: View {
 
-    // MainView からの保存要求
+    // MARK: - 外部入力
     let saveRequest: Bool
+    private let originalUser: User
+    let onSave: (User) -> Void
+    let onDirtyChange: (Bool) -> Void
+    let onOpenPairing: () -> Void
 
     // MARK: - 編集用 State
     @State private var displayName: String
@@ -22,15 +16,11 @@ struct SettingView: View {
     @State private var emotionTags: Set<EmotionTag>
     @State private var startDate: Date
 
-    // プロフィール画像（未保存）
-    @State private var selectedImage: UIImage?
-    @State private var selectedPhotoItem: PhotosPickerItem?
-
-    // MARK: - 受け取り
-    private let originalUser: User
-    let onSave: (User) -> Void
-    let onDirtyChange: (Bool) -> Void
-    let onOpenPairing: () -> Void
+    // 画像
+    @State private var selectedMyImage: UIImage?
+    @State private var selectedPartnerImage: UIImage?
+    @State private var myPhotoItem: PhotosPickerItem?
+    @State private var partnerPhotoItem: PhotosPickerItem?
 
     // MARK: - Init
     init(
@@ -58,63 +48,66 @@ struct SettingView: View {
         statusMessage != (originalUser.statusMessage ?? "") ||
         emotionTags != originalUser.emotionTags ||
         startDate != originalUser.startDate ||
-        selectedImage != nil
+        selectedMyImage != nil ||
+        selectedPartnerImage != nil
     }
 
-    // MARK: - 表示用プロフィール画像
-    private var displayImage: UIImage? {
-        selectedImage ?? ImageService.loadImage(from: originalUser.iconUrl)
+    // MARK: - 表示用画像
+    private var myImage: UIImage? {
+        selectedMyImage ?? originalUser.iconImage
     }
 
+    private var partnerImage: UIImage? {
+        selectedPartnerImage ?? originalUser.partnerIconImage
+    }
+
+    // MARK: - View
     var body: some View {
         Form {
 
-            // MARK: ユーザー情報
+            // =====================
+            // ユーザー情報
+            // =====================
             Section(header: Text("ユーザー情報")) {
 
-                HStack {
-                    Spacer()
-                    ZStack {
-                        if let image = displayImage {
-                            Image(uiImage: image)
-                                .resizable()
-                                .scaledToFill()
-                        } else {
-                            Image(systemName: "person.fill")
-                                .resizable()
-                                .scaledToFit()
-                                .padding(24)
-                                .foregroundColor(.gray)
-                        }
+                // プレビュー（横並び）
+                HStack(spacing: 24) {
+                    ProfileAvatar(image: myImage, title: "自分")
+
+                    // ★ 未連携時のみ相手を表示
+                    if originalUser.coupleId == nil {
+                        ProfileAvatar(image: partnerImage, title: "相手")
                     }
-                    .frame(width: 120, height: 120)
-                    .background(Color.gray.opacity(0.2))
-                    .clipShape(Circle())
-                    Spacer()
                 }
+                .frame(maxWidth: .infinity)
                 .padding(.vertical)
 
-                PhotosPicker(
-                    selection: $selectedPhotoItem,
-                    matching: .images
-                ) {
-                    Text("プロフィール画像を選択")
+                // 自分の画像変更
+                PhotosPicker(selection: $myPhotoItem, matching: .images) {
+                    Text("自分のプロフィール画像を変更")
                 }
 
-                // 表示名
+                // ★ 未連携時のみ相手の画像変更
+                if originalUser.coupleId == nil {
+                    PhotosPicker(selection: $partnerPhotoItem, matching: .images) {
+                        Text("相手のプロフィール画像を変更")
+                    }
+                }
+
                 TextField("表示名", text: $displayName)
                     .onChange(of: displayName) {
                         onDirtyChange(hasChanges)
                     }
 
-                // ステータスメッセージ
                 TextField("出会ってから", text: $statusMessage)
                     .onChange(of: statusMessage) {
                         onDirtyChange(hasChanges)
                     }
             }
 
-            // MARK: 交際開始日
+            // =====================
+            // 交際開始日
+            // =====================
             Section(header: Text("交際開始日")) {
                 DatePicker(
                     "開始日",
@@ -126,29 +119,34 @@ struct SettingView: View {
                 }
             }
 
-            // MARK: 感情タグ
+            // =====================
+            // 感情タグ
+            // =====================
             Section(header: Text("気分（複数選択可）")) {
                 ForEach(EmotionTag.allCases, id: \.self) { tag in
-                    Toggle(
-                        tag.rawValue,
-                        isOn: Binding(
-                            get: { emotionTags.contains(tag) },
-                            set: { isOn in
-                                if isOn {
-                                    emotionTags.insert(tag)
-                                } else {
-                                    emotionTags.remove(tag)
-                                }
-                                onDirtyChange(hasChanges)
+
+                    let isOnBinding = Binding<Bool>(
+                        get: {
+                            emotionTags.contains(tag)
+                        },
+                        set: { newValue in
+                            if newValue {
+                                emotionTags.insert(tag)
+                            } else {
+                                emotionTags.remove(tag)
                             }
-                        )
+                            onDirtyChange(hasChanges)
+                        }
                     )
+
+                    Toggle(tag.rawValue, isOn: isOnBinding)
                 }
             }
 
-            // MARK: カップル共有
+            // =====================
+            // カップル共有
+            // =====================
             Section(header: Text("カップル共有")) {
-
                 if let coupleId = originalUser.coupleId {
                     Text("カップルID：\(coupleId)")
                         .font(.footnote)
@@ -158,9 +156,7 @@ struct SettingView: View {
                         .foregroundColor(.secondary)
                 }
 
-                Button {
-                    onOpenPairing()
-                } label: {
+                Button(action: onOpenPairing) {
                     Label("共有・連携画面を開く", systemImage: "person.2.fill")
                 }
             }
@@ -168,46 +164,45 @@ struct SettingView: View {
         .navigationTitle("設定")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button("保存") {
-                    save()
-                }
-                .disabled(!hasChanges)
+                Button("保存", action: save)
+                    .disabled(!hasChanges)
             }
         }
-        // 外部からの保存要求
-        .onChange(of: saveRequest) {
-            guard saveRequest else { return }
-            save()
+
+        // 保存要求
+        .onChange(of: saveRequest) { _, newValue in
+            if newValue {
+                save()
+            }
         }
-        // 画像選択後
-        .onChange(of: selectedPhotoItem) {
-            guard let item = selectedPhotoItem else { return }
-            Task {
-                if let data = try? await item.loadTransferable(type: Data.self),
-                   let image = UIImage(data: data) {
-                    selectedImage = image
-                    onDirtyChange(hasChanges)
-                }
+
+        // 自分の画像
+        .onChange(of: myPhotoItem) { _, newItem in
+            loadImage(from: newItem) {
+                selectedMyImage = $0
+                onDirtyChange(hasChanges)
+            }
+        }
+
+        // 相手の画像（未連携時）
+        .onChange(of: partnerPhotoItem) { _, newItem in
+            loadImage(from: newItem) {
+                selectedPartnerImage = $0
+                onDirtyChange(hasChanges)
             }
         }
     }
 
-    // MARK: - 保存処理
+    // MARK: - 保存
     private func save() {
         guard hasChanges else { return }
-
-        var iconUrl = originalUser.iconUrl
-
-        // 新しく画像が選ばれていたら保存
-        if let image = selectedImage {
-            iconUrl = ImageService.save(image: image)
-        }
 
         let updatedUser = User(
             id: originalUser.id,
             coupleId: originalUser.coupleId,
             displayName: displayName,
-            iconUrl: iconUrl,
+            iconUrl: selectedMyImage.map { ImageService.save(image: $0) } ?? originalUser.iconUrl,
+            partnerIconUrl: selectedPartnerImage.map { ImageService.save(image: $0) } ?? originalUser.partnerIconUrl,
             startDate: startDate,
             statusMessage: statusMessage.isEmpty ? nil : statusMessage,
             emotionTags: emotionTags,
@@ -216,5 +211,51 @@ struct SettingView: View {
 
         onSave(updatedUser)
         onDirtyChange(false)
+    }
+
+    private func loadImage(
+        from item: PhotosPickerItem?,
+        completion: @escaping (UIImage) -> Void
+    ) {
+        guard let item else { return }
+        Task {
+            if let data = try? await item.loadTransferable(type: Data.self),
+               let image = UIImage(data: data) {
+                completion(image)
+            }
+        }
+    }
+}
+
+// =====================
+// 表示専用アバター
+// =====================
+struct ProfileAvatar: View {
+
+    let image: UIImage?
+    let title: String
+
+    var body: some View {
+        VStack {
+            ZStack {
+                if let image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    Image(systemName: "person.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .padding(24)
+                        .foregroundColor(.gray)
+                }
+            }
+            .frame(width: 120, height: 120)
+            .background(Color.gray.opacity(0.2))
+            .clipShape(Circle())
+
+            Text(title)
+                .font(.caption)
+        }
     }
 }

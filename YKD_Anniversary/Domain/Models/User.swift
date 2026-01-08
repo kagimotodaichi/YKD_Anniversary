@@ -14,6 +14,7 @@ struct User: Identifiable, Equatable, Codable {
     let coupleId: String?               //カップルID
     let displayName: String             //表示名
     let iconUrl: String?                //プロフィール画像URL
+    let partnerIconUrl: String?         //相手用プロフィール画像URL
     let startDate: Date                 //カウント開始日
     let statusMessage: String?          //始まり文字列
     let emotionTags: Set<EmotionTag>    //感情タグ
@@ -24,6 +25,7 @@ struct User: Identifiable, Equatable, Codable {
         coupleId: String? = nil,
         displayName: String,
         iconUrl: String? = nil,
+        partnerIconUrl: String? = nil,
         startDate: Date = Date(),
         statusMessage: String? = nil,
         emotionTags: Set<EmotionTag> = [],
@@ -33,6 +35,7 @@ struct User: Identifiable, Equatable, Codable {
         self.coupleId = coupleId
         self.displayName = displayName
         self.iconUrl = iconUrl
+        self.partnerIconUrl = partnerIconUrl
         self.startDate = startDate
         self.statusMessage = statusMessage
         self.emotionTags = emotionTags
@@ -43,5 +46,8 @@ struct User: Identifiable, Equatable, Codable {
 extension User {
     var iconImage: UIImage? {
         ImageService.loadImage(from: iconUrl)
+    }
+    var partnerIconImage: UIImage?{
+        ImageService.loadImage(from: partnerIconUrl)
     }
 }
